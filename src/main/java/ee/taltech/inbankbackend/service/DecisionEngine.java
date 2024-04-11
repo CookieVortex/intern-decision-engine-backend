@@ -8,6 +8,8 @@ import ee.taltech.inbankbackend.exceptions.InvalidPersonalCodeException;
 import ee.taltech.inbankbackend.exceptions.NoValidLoanException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+
 /**
  * A service class that provides a method for calculating an approved loan amount and period for a customer.
  * The loan amount is calculated based on the customer's credit modifier,
@@ -27,13 +29,13 @@ public class DecisionEngine {
      * The loan amount must be between 2000 and 10000€ months (inclusive).
      *
      * @param personalCode ID code of the customer that made the request.
-     * @param loanAmount Requested loan amount
-     * @param loanPeriod Requested loan period
+     * @param loanAmount   Requested loan amount
+     * @param loanPeriod   Requested loan period
      * @return A Decision object containing the approved loan amount and period, and an error message (if any)
      * @throws InvalidPersonalCodeException If the provided personal ID code is invalid
-     * @throws InvalidLoanAmountException If the requested loan amount is invalid
-     * @throws InvalidLoanPeriodException If the requested loan period is invalid
-     * @throws NoValidLoanException If there is no valid loan found for the given ID code, loan amount and loan period
+     * @throws InvalidLoanAmountException   If the requested loan amount is invalid
+     * @throws InvalidLoanPeriodException   If the requested loan period is invalid
+     * @throws NoValidLoanException         If there is no valid loan found for the given ID code, loan amount and loan period
      */
     public Decision calculateApprovedLoan(String personalCode, Long loanAmount, int loanPeriod)
             throws InvalidPersonalCodeException, InvalidLoanAmountException, InvalidLoanPeriodException,
@@ -44,11 +46,25 @@ public class DecisionEngine {
             return new Decision(null, null, e.getMessage());
         }
 
+        if (isPersonalCodeDenied(personalCode)) {
+            return new Decision(null, null, "Loan application denied for this personal code.");
+        }
+
+        if (isAgeDenied(personalCode)) {
+            return new Decision(null, null, "Loan application denied due to age restrictions.");
+        }
+
         int outputLoanAmount;
         creditModifier = getCreditModifier(personalCode);
 
         if (creditModifier == 0) {
             throw new NoValidLoanException("No valid loan found!");
+        }
+
+        double creditScore = calculateCreditScore(creditModifier, loanAmount, loanPeriod);
+
+        if (creditScore < 1) {
+            return new Decision(null, null, "Loan application denied due to low credit score.");
         }
 
         while (highestValidLoanAmount(loanPeriod) < DecisionEngineConstants.MINIMUM_LOAN_AMOUNT) {
@@ -62,6 +78,37 @@ public class DecisionEngine {
         }
 
         return new Decision(outputLoanAmount, loanPeriod, null);
+    }
+
+    /**
+     * Checks if the provided personal ID code is denied for loan application.
+     */
+    private boolean isPersonalCodeDenied(String personalCode) {
+        return personalCode.equals("49002010965");
+    }
+
+    /**
+     * Checks if the age of the customer, calculated from their personal ID code,
+     * falls within the restricted range of 21 to 75 years old.
+     */
+    private boolean isAgeDenied(String personalCode) {
+        String birthYearString = "19" + personalCode.substring(1, 3);
+        int birthYear = Integer.parseInt(birthYearString);
+
+        int currentYear = LocalDate.now().getYear();
+
+        int age = currentYear - birthYear;
+
+        return age < 21 || age > 75;
+    }
+
+    /**
+     * Calculates the credit score based on the credit modifier, loan amount, and loan period.
+     * The credit score is calculated by dividing the credit modifier by the loan period
+     * and then multiplying it by the loan period.
+     */
+    public double calculateCreditScore(int creditModifier, long loanAmount, int loanPeriod) {
+        return ((double) creditModifier / loanPeriod) * loanPeriod;
     }
 
     /**
@@ -86,6 +133,21 @@ public class DecisionEngine {
     private int getCreditModifier(String personalCode) {
         int segment = Integer.parseInt(personalCode.substring(personalCode.length() - 4));
 
+        switch (personalCode) {
+            case "49002010965" -> {
+                return 0;
+            }
+            case "49002010976" -> {
+                return DecisionEngineConstants.SEGMENT_1_CREDIT_MODIFIER;
+            }
+            case "49002010987" -> {
+                return DecisionEngineConstants.SEGMENT_2_CREDIT_MODIFIER;
+            }
+            case "49002010998" -> {
+                return DecisionEngineConstants.SEGMENT_3_CREDIT_MODIFIER;
+            }
+        }
+
         if (segment < 2500) {
             return 0;
         } else if (segment < 5000) {
@@ -102,11 +164,11 @@ public class DecisionEngine {
      * If inputs are invalid, then throws corresponding exceptions.
      *
      * @param personalCode Provided personal ID code
-     * @param loanAmount Requested loan amount
-     * @param loanPeriod Requested loan period
+     * @param loanAmount   Requested loan amount
+     * @param loanPeriod   Requested loan period
      * @throws InvalidPersonalCodeException If the provided personal ID code is invalid
-     * @throws InvalidLoanAmountException If the requested loan amount is invalid
-     * @throws InvalidLoanPeriodException If the requested loan period is invalid
+     * @throws InvalidLoanAmountException   If the requested loan amount is invalid
+     * @throws InvalidLoanPeriodException   If the requested loan period is invalid
      */
     private void verifyInputs(String personalCode, Long loanAmount, int loanPeriod)
             throws InvalidPersonalCodeException, InvalidLoanAmountException, InvalidLoanPeriodException {
@@ -124,4 +186,6 @@ public class DecisionEngine {
         }
 
     }
+
+
 }

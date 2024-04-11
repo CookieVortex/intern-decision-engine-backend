@@ -83,3 +83,18 @@ The service consists of two main classes:
 
 - DecisionEngine: A service class that provides a method for calculating an approved loan amount and period for a customer.
 - DecisionEngineController: A REST endpoint that handles requests for loan decisions.
+
+
+
+
+
+
+## Completed
+![Screenshot_1](https://github.com/CookieVortex/intern-decision-engine-backend/assets/24642100/d196717e-f0a1-499f-b970-655c10dcc826)
+
+![Screenshot_2](https://github.com/CookieVortex/intern-decision-engine-backend/assets/24642100/38ff1121-d89d-4c11-b13e-d1c06fde8a91)
+
+![Screenshot_3](https://github.com/CookieVortex/intern-decision-engine-backend/assets/24642100/4ca0d2f6-0d7d-48b1-9052-49a6fcca5396)
+
+- Tests completed successfully
+
